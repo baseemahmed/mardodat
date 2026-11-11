@@ -58,7 +58,12 @@ th{background:var(--bg);font-size:13px;color:var(--mut)}
 .hint{color:var(--mut);font-size:13px;margin-top:10px}
 #toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:11px 22px;border-radius:99px;font-weight:600;opacity:0;transition:.25s;pointer-events:none}
 #toast.show{opacity:1}
-@media print{header,nav,.noprint{display:none!important}.panel{box-shadow:none}}
+.phead,.pfoot{display:none}.bx i{display:inline-block;width:16px;height:16px;border:1.5px solid var(--mut);border-radius:3px;vertical-align:middle}
+@media print{@page{size:A4;margin:14mm}.noprint,.tot,#toast{display:none!important}body,.panel{background:#fff!important;color:#000!important}header,nav{display:none!important}main{padding:0;max-width:none}.panel{padding:0;box-shadow:none}
+.phead{display:block;border-bottom:3px solid #000;padding-bottom:10px;margin-bottom:16px}.phead h1{margin:0 0 8px;font-size:22px}.phead div{display:flex;justify-content:space-between;font-size:13px}
+.rt{font-size:13px;border:1px solid #000;margin-bottom:14px}.rt th,.rt td{border:1px solid #777;padding:7px 9px;color:#000}.rt th{background:#eee!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.rt .dh{background:#222!important;color:#fff!important;font-size:15px;-webkit-print-color-adjust:exact;print-color-adjust:exact}.rt tr{page-break-inside:avoid}.dayrow{page-break-after:avoid}.bx{text-align:center}.bx i{border-color:#000}
+.pfoot{display:block;text-align:center;font-size:11px;color:#666;margin-top:10px}}
 </style>
 </head>
 <body>
@@ -139,12 +144,13 @@ function moveStore(id,d){D.stores.forEach(function(x){if(x.id==id){x.day=+d;put(
 function delStore(id){var n=pend(id).length;if(!confirm(n?"المخزن عليه "+n+" مردود لسه متسلمش، هيتحذفوا معاه. متأكد؟":"حذف المخزن؟"))return;
 pend(id).forEach(function(r){rm("returns",r.id)});rm("stores",id);render()}
 function repRows(){var o=[];DAYS.forEach(function(n,i){storesOf(i).forEach(function(s){pend(s.id).forEach(function(r){o.push([n,s.name,r.no,r.added])})})});return o}
-function viewRep(){var rows=repRows();
-var h='<h2>المردودات اللي لسه متسلمتش</h2><div class="tot"><div><b>'+rows.length+'</b>مردود منتظر</div><div><b>'+D.returns.filter(function(r){return r.done}).length+'</b>تم استلامه</div></div><div class="row noprint" style="margin-bottom:16px"><button class="btn" onclick="exportXls()">تصدير Excel</button><button class="btn ghost" onclick="window.print()">طباعة</button><button class="btn ghost" onclick="backup()">نسخة احتياطية</button><button class="btn ghost" onclick="$(\'rf\').click()">استرجاع نسخة</button><input type="file" id="rf" accept=".json" hidden onchange="restore(this)"></div>';
+function viewRep(){var rows=repRows(),td=new Date().toLocaleDateString("ar-EG",{weekday:"long",year:"numeric",month:"long",day:"numeric"});
+var h='<div class="phead"><h1>تقرير المردودات غير المستلمة</h1><div><span>تاريخ التقرير: '+td+'</span><span>إجمالي المردودات المنتظرة: <b>'+rows.length+'</b></span></div></div>';
+h+='<h2 class="noprint">المردودات اللي لسه متسلمتش</h2><div class="tot noprint"><div><b>'+rows.length+'</b>مردود منتظر</div><div><b>'+D.returns.filter(function(r){return r.done}).length+'</b>تم استلامه</div></div><div class="row noprint" style="margin-bottom:16px"><button class="btn" onclick="exportXls()">تصدير Excel</button><button class="btn ghost" onclick="window.print()">طباعة</button><button class="btn ghost" onclick="backup()">نسخة احتياطية</button><button class="btn ghost" onclick="$(\'rf\').click()">استرجاع نسخة</button><input type="file" id="rf" accept=".json" hidden onchange="restore(this)"></div>';
 if(!rows.length)return h+'<div class="empty">مفيش مردودات معلقة 🎉</div>';
-var cd="",cs="";h+='<table>';rows.forEach(function(r){if(r[0]!=cd){cd=r[0];cs="";h+='<tr><td colspan="3" class="dh">'+cd+'</td></tr><tr><th>المخزن</th><th>رقم المردود</th><th>تاريخ الإدخال</th></tr>'}
-h+='<tr><td>'+(r[1]==cs?'':esc(r[1]))+'</td><td>'+esc(r[2])+'</td><td>'+r[3]+'</td></tr>';cs=r[1]});
-return h+'</table>'}
+var cd="",n=0;h+='<table class="rt">';rows.forEach(function(r){if(r[0]!=cd){cd=r[0];h+='<tr class="dayrow"><td colspan="5" class="dh">'+cd+'</td></tr><tr class="th"><th style="width:44px">م</th><th>المخزن</th><th>رقم المردود</th><th>تاريخ الإدخال</th><th style="width:90px">تم التسليم</th></tr>'}
+n++;h+='<tr><td>'+n+'</td><td><b>'+esc(r[1])+'</b></td><td>'+esc(r[2])+'</td><td>'+r[3]+'</td><td class="bx"><i></i></td></tr>'});
+return h+'</table><div class="pfoot">مردودات المخازن</div>'}
 function dl(name,data,type){if(window.claude&&claude.use){claude.use("downloads").then(function(d){if(d)return d.save({filename:name,data:data}).catch(function(){});old(name,data,type)}).catch(function(){old(name,data,type)});return}old(name,data,type)}
 function old(name,data,type){var a=document.createElement("a");a.href=URL.createObjectURL(new Blob([data],{type:type}));a.download=name;document.body.appendChild(a);a.click();a.remove()}
 function exportXls(){var rows=repRows();if(!rows.length){toast("مفيش حاجة تتصدر");return}
