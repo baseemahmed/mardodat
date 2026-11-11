@@ -45,7 +45,7 @@ input:focus,select:focus,button:focus-visible{outline:2px solid var(--pri);outli
 .item input[type=checkbox]{width:22px;height:22px;accent-color:var(--pri)}
 .x{border:0;background:none;color:var(--red);font-size:20px;cursor:pointer}
 .empty{color:var(--mut);padding:22px;text-align:center;border:1.5px dashed var(--line);border-radius:12px}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
 .st{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:12px 14px;border:1.5px solid var(--line);border-radius:12px}
 .st select{padding:6px 8px;font-size:13px}
 table{width:100%;border-collapse:collapse;margin-bottom:6px}
@@ -58,7 +58,7 @@ th{background:var(--bg);font-size:13px;color:var(--mut)}
 .hint{color:var(--mut);font-size:13px;margin-top:10px}
 #toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:11px 22px;border-radius:99px;font-weight:600;opacity:0;transition:.25s;pointer-events:none}
 #toast.show{opacity:1}
-.phead,.pfoot{display:none}.bx i{display:inline-block;width:16px;height:16px;border:1.5px solid var(--mut);border-radius:3px;vertical-align:middle}
+.item.neg{background:rgba(192,68,58,.12);border-right-color:var(--red)}.phead,.pfoot{display:none}.bx i{display:inline-block;width:16px;height:16px;border:1.5px solid var(--mut);border-radius:3px;vertical-align:middle}
 @media print{@page{size:A4;margin:14mm}.noprint,.tot,#toast{display:none!important}body,.panel{background:#fff!important;color:#000!important}header,nav{display:none!important}main{padding:0;max-width:none}.panel{padding:0;box-shadow:none}
 .phead{display:block;border-bottom:3px solid #000;padding-bottom:10px;margin-bottom:16px}.phead h1{margin:0 0 8px;font-size:22px}.phead div{display:flex;justify-content:space-between;font-size:13px}
 .rt{font-size:13px;border:1px solid #000;margin-bottom:14px}.rt th,.rt td{border:1px solid #777;padding:7px 9px;color:#000}.rt th{background:#eee!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
@@ -73,7 +73,7 @@ th{background:var(--bg);font-size:13px;color:var(--mut)}
 <div id="toast"></div>
 <script>
 var DAYS=["السبت","الأحد","الاثنين","الثلاثاء","الأربعاء","الخميس","الجمعة"];
-var KEY="mardodat_v1",D={stores:[],returns:[]},DB=null,mode="loading";
+var KEY="mardodat_v1",D={stores:[],returns:[],diffs:[]},DB=null,mode="loading";
 function lsave(){if(!DB){try{localStorage.setItem(KEY,JSON.stringify(D))}catch(e){}}}
 function fail(e){toast("تعذر الحفظ، تأكد من الاتصال")}
 function put(c,o){var a=D[c],i=a.findIndex(function(x){return x.id==o.id});if(i<0)a.push(o);else a[i]=o;if(DB)DB.collection(c).doc(o.id).set(o).catch(fail);lsave()}
@@ -81,11 +81,11 @@ function rm(c,id){D[c]=D[c].filter(function(x){return x.id!=id});if(DB)DB.collec
 var FIREBASE_CONFIG={apiKey:"AIzaSyCkh7wibNL0lLsQsxVFBOPR3TChqNVH2No",authDomain:"reuturns.firebaseapp.com",projectId:"reuturns",storageBucket:"reuturns.firebasestorage.app",messagingSenderId:"503920619403",appId:"1:503920619403:web:c00a844ccee89efb9cc98e"};
 function init(){
 if(!window.firebase){mode="err:تعذر تحميل مكتبة Firebase (تأكد من الإنترنت)";render();return}
-if(!FIREBASE_CONFIG.projectId){mode="local";try{var s=localStorage.getItem(KEY);if(s)D=JSON.parse(s)}catch(e){}render();return}
+if(!FIREBASE_CONFIG.projectId){mode="local";try{var s=localStorage.getItem(KEY);if(s)D=JSON.parse(s);D.diffs=D.diffs||[]}catch(e){}render();return}
 try{firebase.initializeApp(FIREBASE_CONFIG);var fs=firebase.firestore();
 DB={collection:function(c){var col=fs.collection(c);return{doc:function(id){var d=col.doc(id);return{set:function(o){return d.set(o)},delete:function(){return d.delete()}}},onSnapshot:function(f,e){return col.onSnapshot(function(sn){f({docs:sn.docs.map(function(x){return{data:function(){return x.data()}}})})},e)}}}};
 mode="online";
-["stores","returns"].forEach(function(c){DB.collection(c).onSnapshot(function(sn){D[c]=sn.docs.map(function(d){return JSON.parse(JSON.stringify(d.data()))}).sort(function(a,b){return (a.ts||0)-(b.ts||0)});render()},function(e){mode="err:"+(e&&(e.code||e.message)||"unknown");render()})});render()
+["stores","returns","diffs"].forEach(function(c){DB.collection(c).onSnapshot(function(sn){D[c]=sn.docs.map(function(d){return JSON.parse(JSON.stringify(d.data()))}).sort(function(a,b){return (a.ts||0)-(b.ts||0)});render()},function(e){mode="err:"+(e&&(e.code||e.message)||"unknown");render()})});render()
 }catch(e){mode="local";render();toast("إعدادات Firebase غير صحيحة")}}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
 function esc(t){return String(t).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
@@ -93,7 +93,7 @@ function toast(m){var t=document.getElementById("toast");t.textContent=m;t.class
 // js getDay: Sun=0 ; map to our index (Sat=0)
 var today=(new Date().getDay()+1)%7;
 var S={tab:"in",day:today,store:null};
-var TABS=[["in","إدخال المردودات"],["out","استلام المردودات"],["stores","المخازن"],["search","بحث"],["rep","التقرير"]];
+var TABS=[["in","إدخال المردودات"],["out","استلام المردودات"],["stores","المخازن"],["diff","فروقات المخازن"],["search","بحث"],["rep","التقرير"]];
 function $(id){return document.getElementById(id)}
 function storesOf(d){return D.stores.filter(function(x){return x.day==d})}
 function pend(id){return D.returns.filter(function(r){return r.storeId==id&&!r.done})}
@@ -104,9 +104,9 @@ return '<div class="chips">'+l.map(function(x){var n=pend(x.id).length;return '<
 function render(){
 $("tabs").innerHTML=TABS.map(function(t){return '<button class="'+(S.tab==t[0]?'on':'')+'" onclick="S.tab=\''+t[0]+'\';render()">'+t[1]+'</button>'}).join("");
 var v=$("view"),act=document.activeElement&&document.activeElement.id,sv={},ck=[].map.call(document.querySelectorAll(".ck:checked"),function(c){return c.value});
-["num","sn","q"].forEach(function(i){if($(i))sv[i]=$(i).value});
+["num","sn","q","dam","dno","dnote"].forEach(function(i){if($(i))sv[i]=$(i).value});
 $("st").textContent=mode=="online"?"● متزامن أونلاين مع كل الأجهزة":mode=="local"?"● يعمل محلياً على هذا الجهاز فقط (إعدادات Firebase ناقصة)":mode.indexOf("err:")==0?"● خطأ: "+mode.slice(4):"جاري التحميل...";
-if(S.tab=="search")v.innerHTML=viewSearch();else if(S.tab=="in")v.innerHTML=viewIn();else if(S.tab=="out")v.innerHTML=viewOut();else if(S.tab=="stores")v.innerHTML=viewStores();else v.innerHTML=viewRep();
+if(S.tab=="diff")v.innerHTML=viewDiff();else if(S.tab=="search")v.innerHTML=viewSearch();else if(S.tab=="in")v.innerHTML=viewIn();else if(S.tab=="out")v.innerHTML=viewOut();else if(S.tab=="stores")v.innerHTML=viewStores();else v.innerHTML=viewRep();
 for(var k in sv)if($(k))$(k).value=sv[k];
 [].forEach.call(document.querySelectorAll(".ck"),function(c){if(ck.indexOf(c.value)>-1)c.checked=true});
 if(S.tab=="search")doSearch();
@@ -130,16 +130,38 @@ function recv(){var c=document.querySelectorAll(".ck:checked");if(!c.length){toa
 var ids=[].map.call(c,function(x){return x.value});D.returns.forEach(function(r){if(ids.indexOf(r.id)>-1){r.done=true;r.at=new Date().toLocaleDateString("ar-EG");put("returns",r)}});render();toast("تم تسجيل الاستلام")}
 function undo(id){D.returns.forEach(function(r){if(r.id==id){r.done=false;r.at="";put("returns",r)}});render()}
 function toggle(id){D.returns.forEach(function(r){if(r.id==id){r.done=!r.done;r.at=r.done?new Date().toLocaleDateString("ar-EG"):"";put("returns",r)}});render()}
+
+function fmt(n){return Number(n).toLocaleString("en-US",{maximumFractionDigits:2})}
+function sname(x){var s=D.stores.find(function(a){return a.id==x.storeId});return s?s.name:(x.sn||"—")}
+function stOpts(sel,all){var l=D.stores.filter(function(x){return all?(x.diff||D.diffs.some(function(d){return d.storeId==x.id})):(x.diff||x.id==sel)}).slice().sort(function(a,b){return a.name.localeCompare(b.name,"ar")});return (all?'<option value="all"'+(sel=="all"?' selected':'')+'>كل المخازن</option>':'<option value="">اختر المخزن</option>')+l.map(function(x){return '<option value="'+x.id+'"'+(sel==x.id?' selected':'')+'>'+esc(x.name)+'</option>'}).join("")}
+function viewDiff(){var today=new Date().toISOString().slice(0,10);
+S.dm=S.dm||today.slice(0,7);S.ds=S.ds||"all";S.dk=S.dk||"minus";S.dfs=S.dfs||"";S.dd=S.dd||today;
+var h='<h2>تسجيل فرق طلبية</h2><div class="row"><select id="dfs" onchange="S.dfs=this.value">'+stOpts(S.dfs,false)+'</select><span class="row" style="gap:4px"><button class="day'+(S.dk=="minus"?' on':'')+'" onclick="S.dk=\'minus\';render()">عجز</button><button class="day'+(S.dk=="plus"?' on':'')+'" onclick="S.dk=\'plus\';render()">زيادة</button></span><input id="dam" type="number" min="0" step="any" inputmode="decimal" placeholder="قيمة الفرق" style="width:130px" onkeydown="if(event.key==\'Enter\')addDiff()"><input id="dno" placeholder="رقم الطلبية (اختياري)" style="width:170px"><input id="dd" type="date" value="'+S.dd+'" onchange="S.dd=this.value"><input id="dnote" placeholder="ملاحظة (اختياري)" style="flex:1;min-width:140px"><button class="btn" onclick="addDiff()">تسجيل</button></div>';
+h+=''+(D.stores.some(function(x){return x.diff})?'':'<p class="hint">مفيش مخازن معلّمة للفروقات — علّم المخازن اللي ليها فروقات من تبويب «المخازن» عشان تظهر هنا. <button class="btn ghost" style="padding:4px 12px" onclick="S.tab=\'stores\';render()">فتح المخازن</button></p>')+'<h2 style="margin-top:28px">إجمالي الفروقات</h2><div class="row"><select onchange="S.ds=this.value;render()">'+stOpts(S.ds,true)+'</select><input type="month" value="'+S.dm+'" onchange="if(this.value){S.dm=this.value;render()}"></div>';
+var l=D.diffs.filter(function(x){return (S.ds=="all"||x.storeId==S.ds)&&(x.date||"").slice(0,7)==S.dm}).sort(function(a,b){return a.date<b.date?1:a.date>b.date?-1:b.ts-a.ts});
+var p=0,m=0,g={};l.forEach(function(x){var o=g[x.storeId]=g[x.storeId]||{n:sname(x),p:0,m:0};if(x.kind=="plus"){p+=x.amount;o.p+=x.amount}else{m+=x.amount;o.m+=x.amount}});
+var net=p-m;
+h+='<div class="tot" style="margin-top:14px"><div><b style="color:var(--ok)">'+fmt(p)+'</b>إجمالي الزيادة</div><div><b style="color:var(--red)">'+fmt(m)+'</b>إجمالي العجز</div><div><b style="color:'+(net<0?'var(--red)':'var(--ok)')+'">'+fmt(Math.abs(net))+'</b>'+(net>0?'صافي زيادة':net<0?'صافي عجز':'متعادل')+'</div></div>';
+if(S.ds=="all"&&l.length){h+='<table><tr><th>المخزن</th><th>زيادة</th><th>عجز</th><th>الصافي</th></tr>'+Object.keys(g).map(function(k){var o=g[k],t=o.p-o.m;return '<tr><td><b>'+esc(o.n)+'</b></td><td>'+fmt(o.p)+'</td><td>'+fmt(o.m)+'</td><td style="color:'+(t<0?'var(--red)':'var(--ok)')+';font-weight:700">'+(t<0?'عجز ':t>0?'زيادة ':'')+fmt(Math.abs(t))+'</td></tr>'}).join("")+'</table>'}
+h+='<div class="list">'+(l.length?l.map(function(x){return '<div class="item'+(x.kind=="minus"?' neg':' done')+'"><span class="no">'+(x.kind=="minus"?'عجز ':'زيادة ')+fmt(x.amount)+'</span><span class="meta">'+esc(sname(x))+(x.order?' • طلبية '+esc(x.order):'')+' • '+x.date+(x.note?' • '+esc(x.note):'')+'</span><button class="x" title="حذف" onclick="delDiff(\''+x.id+'\')">×</button></div>'}).join(""):'<div class="empty">مفيش فروقات مسجلة في الشهر ده</div>')+'</div>';
+return h}
+function addDiff(){var st=$("dfs").value,a=parseFloat($("dam").value),today=new Date().toISOString().slice(0,10);
+if(!st){toast("اختار المخزن");return}if(!(a>0)){toast("اكتب قيمة الفرق");return}
+var s=D.stores.find(function(x){return x.id==st}),d=$("dd").value||today;
+put("diffs",{id:uid(),ts:Date.now(),storeId:st,sn:s?s.name:"",kind:S.dk,amount:a,order:$("dno").value.trim(),note:$("dnote").value.trim(),date:d});
+$("dam").value="";$("dno").value="";$("dnote").value="";S.dm=d.slice(0,7);render();toast("تم تسجيل الفرق")}
+function delDiff(id){if(confirm("حذف الفرق ده؟")){rm("diffs",id);render()}}
 function viewSearch(){return '<h2>بحث</h2><input id="q" style="width:100%" placeholder="ابحث باسم المخزن أو رقم المردود" oninput="S.q=this.value;doSearch()"><div class="list" id="sres"></div>'}
 function doSearch(){var i=$("q"),out=$("sres");if(!i||!out)return;var q=i.value.trim().toLowerCase();
 if(!q){out.innerHTML='<div class="empty">اكتب جزء من اسم المخزن أو رقم المردود</div>';return}
 var l=D.returns.map(function(r){var s=D.stores.find(function(x){return x.id==r.storeId});return{r:r,n:s?s.name:(r.sn||"—"),d:s?DAYS[s.day]:"—"}}).filter(function(o){return String(o.r.no).toLowerCase().indexOf(q)>-1||o.n.toLowerCase().indexOf(q)>-1});
 out.innerHTML=l.length?l.slice(0,100).map(function(o){var r=o.r;return '<div class="item'+(r.done?' done':'')+'"><span class="no">'+esc(r.no)+'</span><span class="meta">'+esc(o.n)+' • '+o.d+' • '+(r.done?'استُلم '+r.at:'منتظر')+'</span><button class="btn ghost" style="padding:6px 12px" onclick="toggle(\''+r.id+'\')">'+(r.done?'تراجع':'تأكيد الاستلام')+'</button></div>'}).join(""):'<div class="empty">مفيش نتائج</div>'}
-function viewStores(){var h='<h2>إدارة المخازن</h2><div class="row noprint"><input id="sn" placeholder="اسم المخزن" onkeydown="if(event.key==\'Enter\')addStore()"><select id="sd">'+DAYS.map(function(n,i){return '<option value="'+i+'"'+(i==S.day?' selected':'')+'>'+n+'</option>'}).join("")+'</select><button class="btn" onclick="addStore()">إضافة مخزن</button></div>';
+function viewStores(){var h='<h2>إدارة المخازن</h2><div class="row noprint"><input id="sn" placeholder="اسم المخزن" onkeydown="if(event.key==\'Enter\')addStore()"><select id="sd">'+DAYS.map(function(n,i){return '<option value="'+i+'"'+(i==S.day?' selected':'')+'>'+n+'</option>'}).join("")+'</select><label style="font-size:14px;cursor:pointer;white-space:nowrap"><input type="checkbox" id="sdf"> ضمن الفروقات</label><button class="btn" onclick="addStore()">إضافة مخزن</button></div>';
 if(!D.stores.length)return h+'<div class="list"><div class="empty">لسه مفيش مخازن — ابدأ بإضافة أول مخزن</div></div>';
-DAYS.forEach(function(n,i){var l=storesOf(i);if(!l.length)return;h+='<h2 style="margin-top:22px">'+n+'</h2><div class="grid">'+l.map(function(x){return '<div class="st"><b>'+esc(x.name)+'</b><span class="row"><select onchange="moveStore(\''+x.id+'\',this.value)">'+DAYS.map(function(m,j){return '<option value="'+j+'"'+(j==i?' selected':'')+'>'+m+'</option>'}).join("")+'</select><button class="x" title="حذف" onclick="delStore(\''+x.id+'\')">🗑</button></span></div>'}).join("")+'</div>'});
-return h+'<p class="hint">غيّر يوم أي مخزن من القائمة المنسدلة بجانبه.</p>'}
-function addStore(){var n=$("sn").value.trim();if(!n)return;put("stores",{id:uid(),ts:Date.now(),name:n,day:+$("sd").value});render();toast("تمت إضافة المخزن")}
+DAYS.forEach(function(n,i){var l=storesOf(i);if(!l.length)return;h+='<h2 style="margin-top:22px">'+n+'</h2><div class="grid">'+l.map(function(x){return '<div class="st"><b>'+esc(x.name)+'</b><span class="row"><label title="يظهر في فروقات المخازن" style="font-size:12.5px;cursor:pointer;white-space:nowrap"><input type="checkbox"'+(x.diff?' checked':'')+' onchange="setDiff(\''+x.id+'\',this.checked)"> فروقات</label><select onchange="moveStore(\''+x.id+'\',this.value)">'+DAYS.map(function(m,j){return '<option value="'+j+'"'+(j==i?' selected':'')+'>'+m+'</option>'}).join("")+'</select><button class="x" title="حذف" onclick="delStore(\''+x.id+'\')">🗑</button></span></div>'}).join("")+'</div>'});
+return h+'<p class="hint">غيّر يوم أي مخزن من القائمة المنسدلة بجانبه. علّم على «فروقات» للمخازن اللي بتسجل لها فروقات عشان تظهر في قايمة تبويب فروقات المخازن بس.</p>'}
+function addStore(){var n=$("sn").value.trim();if(!n)return;put("stores",{id:uid(),ts:Date.now(),name:n,day:+$("sd").value,diff:$("sdf").checked});render();toast("تمت إضافة المخزن")}
+function setDiff(id,v){D.stores.forEach(function(x){if(x.id==id){x.diff=!!v;put("stores",x)}});toast(v?"المخزن هيظهر في الفروقات":"اتشال من الفروقات")}
 function moveStore(id,d){D.stores.forEach(function(x){if(x.id==id){x.day=+d;put("stores",x)}});render();toast("تم تغيير اليوم")}
 function delStore(id){var n=pend(id).length;if(!confirm(n?"المخزن عليه "+n+" مردود لسه متسلمش، هيتحذفوا معاه. متأكد؟":"حذف المخزن؟"))return;
 pend(id).forEach(function(r){rm("returns",r.id)});rm("stores",id);render()}
@@ -158,7 +180,7 @@ var t='<html dir="rtl"><head><meta charset="utf-8"></head><body><table border="1
 rows.forEach(function(r){t+='<tr>'+r.map(function(c){return '<td>'+esc(c)+'</td>'}).join("")+'</tr>'});
 dl("مردودات-لم-تستلم-"+new Date().toISOString().slice(0,10)+".xls",t+'</table></body></html>',"application/vnd.ms-excel")}
 function backup(){dl("backup-mardodat.json",JSON.stringify(D),"application/json")}
-function restore(i){var f=i.files[0];if(!f)return;var r=new FileReader();r.onload=function(){try{var d=JSON.parse(r.result);if(d.stores&&d.returns){var n=0;d.stores.forEach(function(x){x.ts=x.ts||Date.now()+n++;put("stores",x)});d.returns.forEach(function(x){x.ts=x.ts||Date.now()+n++;put("returns",x)});render();toast("تم الاسترجاع")}}catch(e){toast("ملف غير صالح")}};r.readAsText(f)}
+function restore(i){var f=i.files[0];if(!f)return;var r=new FileReader();r.onload=function(){try{var d=JSON.parse(r.result);if(d.stores&&d.returns){var n=0;d.stores.forEach(function(x){x.ts=x.ts||Date.now()+n++;put("stores",x)});d.returns.forEach(function(x){x.ts=x.ts||Date.now()+n++;put("returns",x)});(d.diffs||[]).forEach(function(x){x.ts=x.ts||Date.now()+n++;put("diffs",x)});render();toast("تم الاسترجاع")}}catch(e){toast("ملف غير صالح")}};r.readAsText(f)}
 render();init();
 </script>
 </body>
