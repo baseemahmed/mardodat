@@ -95,7 +95,7 @@ function toast(m){var t=document.getElementById("toast");t.textContent=m;t.class
 // js getDay: Sun=0 ; map to our index (Sat=0)
 var today=(new Date().getDay()+1)%7;
 var S={tab:"in",day:today,store:null};
-var TABS=[["in","إدخال المردودات"],["out","استلام المردودات"],["stores","المخازن"],["diff","فروقات المخازن"],["search","بحث"],["rep","التقرير"]];
+var TABS=[["in","إدخال المردودات"],["out","استلام المردودات"],["stores","المخازن"],["diff","فروقات الشركات"],["search","بحث"],["rep","التقرير"]];
 if(READ_ONLY){TABS=TABS.filter(function(t){return ["out","rep"].indexOf(t[0])>-1});S.tab="out"}
 function $(id){return document.getElementById(id)}
 function storesOf(d){return D.stores.filter(function(x){return x.day==d})}
