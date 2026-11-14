@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>مردودات المخازن (عرض فقط)</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-app-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-firestore-compat.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#eef3f1;--card:#fff;--ink:#12302b;--mut:#6b8580;--line:#dbe5e2;--pri:#0f6b5c;--pri2:#0a4d42;--amb:#d98a1c;--ambbg:#fdf1dd;--ok:#2f8f5b;--okbg:#e2f4ea;--red:#c0443a}
+@media(prefers-color-scheme:dark){:root{--bg:#0e1b19;--card:#162825;--ink:#e6f1ee;--mut:#8fa9a3;--line:#27403b;--pri:#2fb59f;--pri2:#1f8f7c;--ambbg:#3a2d14;--okbg:#17382a}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Cairo,Tahoma,sans-serif;min-height:100vh}
+header{background:linear-gradient(135deg,#0a4d42,#0f6b5c);color:#fff;padding:22px 20px 70px}
+.wrap{max-width:980px;margin:0 auto}
+header h1{margin:0;font-size:26px;font-weight:800}
+header p{margin:4px 0 0;opacity:.8;font-size:14px}
+nav{display:flex;gap:6px;max-width:980px;margin:-48px auto 0;padding:0 12px;flex-wrap:wrap}
+nav button{flex:1;min-width:120px;border:0;background:var(--card);color:var(--mut);font:600 15px Cairo,sans-serif;padding:14px 10px;border-radius:14px 14px 0 0;cursor:pointer}
+nav button.on{color:var(--pri);box-shadow:inset 0 -4px 0 var(--pri)}
+main{max-width:980px;margin:0 auto;padding:0 12px 40px}
+.panel{background:var(--card);border-radius:0 0 16px 16px;padding:22px;box-shadow:0 6px 24px rgba(10,60,50,.08)}
+h2{margin:0 0 14px;font-size:19px}
+.days{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+.day{border:1.5px solid var(--line);background:transparent;color:var(--ink);padding:8px 14px;border-radius:999px;font:600 14px Cairo,sans-serif;cursor:pointer}
+.day.on{background:var(--pri);border-color:var(--pri);color:#fff}
+.day small{opacity:.75;margin-right:4px}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+.chip{border:1.5px solid var(--line);background:var(--bg);color:var(--ink);padding:10px 16px;border-radius:10px;font:600 15px Cairo,sans-serif;cursor:pointer}
+.chip.on{border-color:var(--pri);background:var(--pri);color:#fff}
+.chip b{background:var(--amb);color:#fff;border-radius:99px;font-size:12px;padding:1px 8px;margin-right:6px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+input,select{font:600 15px Cairo,sans-serif;padding:11px 13px;border:1.5px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);min-width:0}
+input:focus,select:focus,button:focus-visible{outline:2px solid var(--pri);outline-offset:2px}
+.btn{border:0;background:var(--pri);color:#fff;font:700 15px Cairo,sans-serif;padding:11px 20px;border-radius:10px;cursor:pointer}
+.btn:hover{background:var(--pri2)}
+.btn.ghost{background:transparent;color:var(--pri);border:1.5px solid var(--pri)}
+.btn.red{background:transparent;color:var(--red);border:1.5px solid var(--red)}
+.list{margin-top:16px;display:grid;gap:8px}
+.item{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:12px;background:var(--ambbg);border-right:5px solid var(--amb)}
+.item.done{background:var(--okbg);border-right-color:var(--ok)}
+.item .no{font-weight:800;font-size:17px;flex:1}
+.item .meta{color:var(--mut);font-size:12.5px}
+.item input[type=checkbox]{width:22px;height:22px;accent-color:var(--pri)}
+.x{border:0;background:none;color:var(--red);font-size:20px;cursor:pointer}
+.empty{color:var(--mut);padding:22px;text-align:center;border:1.5px dashed var(--line);border-radius:12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.st{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:12px 14px;border:1.5px solid var(--line);border-radius:12px}
+.st select{padding:6px 8px;font-size:13px}
+table{width:100%;border-collapse:collapse;margin-bottom:6px}
+th,td{padding:9px 10px;text-align:right;border-bottom:1px solid var(--line)}
+th{background:var(--bg);font-size:13px;color:var(--mut)}
+.dh{background:var(--pri);color:#fff;font-weight:800}
+.tot{display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.tot div{flex:1;min-width:140px;background:var(--bg);border-radius:12px;padding:14px}
+.tot b{display:block;font-size:28px;color:var(--pri)}
+.hint{color:var(--mut);font-size:13px;margin-top:10px}
+#toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:11px 22px;border-radius:99px;font-weight:600;opacity:0;transition:.25s;pointer-events:none}
+#toast.show{opacity:1}
+.item.neg{background:rgba(192,68,58,.12);border-right-color:var(--red)}.phead,.pfoot{display:none}.bx i{display:inline-block;width:16px;height:16px;border:1.5px solid var(--mut);border-radius:3px;vertical-align:middle}
+@media print{@page{size:A4;margin:14mm}.noprint,.tot,#toast{display:none!important}body,.panel{background:#fff!important;color:#000!important}header,nav{display:none!important}main{padding:0;max-width:none}.panel{padding:0;box-shadow:none}
+.phead{display:block;border-bottom:3px solid #000;padding-bottom:10px;margin-bottom:16px}.phead h1{margin:0 0 8px;font-size:22px}.phead div{display:flex;justify-content:space-between;font-size:13px}
+.rt{font-size:13px;border:1px solid #000;margin-bottom:14px}.rt th,.rt td{border:1px solid #777;padding:7px 9px;color:#000}.rt th{background:#eee!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.rt .dh{background:#d6d6d6!important;color:#000!important;font-size:15px;-webkit-print-color-adjust:exact;print-color-adjust:exact}.rt tr{page-break-inside:avoid}.dayrow{page-break-after:avoid}.bx{text-align:center}.bx i{border-color:#000}
+.pfoot{display:block;text-align:center;font-size:11px;color:#666;margin-top:10px}}
+</style>
+</head>
+<body>
+<header><div class="wrap"><h1>مردودات المخازن</h1><p>تسجيل واستلام مردودات الأدوية من المخازن الموردة <span id="st" style="margin-right:12px;background:rgba(255,255,255,.15);padding:2px 12px;border-radius:99px;font-size:12.5px"></span></p></div></header>
+<nav id="tabs"></nav>
+<main><div class="panel" id="view"></div></main>
+<div id="toast"></div>
+<script src="config.js"></script>
+<script>
+var DAYS=["السبت","الأحد","الاثنين","الثلاثاء","الأربعاء","الخميس","الجمعة"];
+var KEY="mardodat_v1",D={stores:[],returns:[],diffs:[]},DB=null,mode="loading";
+function lsave(){if(!DB){try{localStorage.setItem(KEY,JSON.stringify(D))}catch(e){}}}
+function fail(e){toast("تعذر الحفظ، تأكد من الاتصال")}
+function put(c,o){if(READ_ONLY)return;var a=D[c],i=a.findIndex(function(x){return x.id==o.id});if(i<0)a.push(o);else a[i]=o;if(DB)DB.collection(c).doc(o.id).set(o).catch(fail);lsave()}
+function rm(c,id){if(READ_ONLY)return;D[c]=D[c].filter(function(x){return x.id!=id});if(DB)DB.collection(c).doc(id).delete().catch(fail);lsave()}
+var FIREBASE_CONFIG=window.FIREBASE_CONFIG||{};
+var READ_ONLY=true;
+function init(){
+if(!window.firebase){mode="err:تعذر تحميل مكتبة Firebase (تأكد من الإنترنت)";render();return}
+if(!FIREBASE_CONFIG.projectId){mode="local";try{var s=localStorage.getItem(KEY);if(s)D=JSON.parse(s);D.diffs=D.diffs||[]}catch(e){}render();return}
+try{firebase.initializeApp(FIREBASE_CONFIG);var fs=firebase.firestore();
+DB={collection:function(c){var col=fs.collection(c);return{doc:function(id){var d=col.doc(id);return{set:function(o){return d.set(o)},delete:function(){return d.delete()}}},onSnapshot:function(f,e){return col.onSnapshot(function(sn){f({docs:sn.docs.map(function(x){return{data:function(){return x.data()}}})})},e)}}}};
+mode="online";
+["stores","returns","diffs"].forEach(function(c){DB.collection(c).onSnapshot(function(sn){D[c]=sn.docs.map(function(d){return JSON.parse(JSON.stringify(d.data()))}).sort(function(a,b){return (a.ts||0)-(b.ts||0)});render()},function(e){mode="err:"+(e&&(e.code||e.message)||"unknown");render()})});render()
+}catch(e){mode="local";render();toast("إعدادات Firebase غير صحيحة")}}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
+function esc(t){return String(t).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+function toast(m){var t=document.getElementById("toast");t.textContent=m;t.className="show";setTimeout(function(){t.className=""},1800)}
+// js getDay: Sun=0 ; map to our index (Sat=0)
+var today=(new Date().getDay()+1)%7;
+var S={tab:"in",day:today,store:null};
+var TABS=[["in","إدخال المردودات"],["out","استلام المردودات"],["stores","المخازن"],["diff","فروقات المخازن"],["search","بحث"],["rep","التقرير"]];
+if(READ_ONLY){TABS=TABS.filter(function(t){return ["rep","search","diff"].indexOf(t[0])>-1});S.tab="rep"}
+function $(id){return document.getElementById(id)}
+function storesOf(d){return D.stores.filter(function(x){return x.day==d})}
+function pend(id){return D.returns.filter(function(r){return r.storeId==id&&!r.done})}
+function getStore(){var l=storesOf(S.day);if(!l.some(function(x){return x.id==S.store}))S.store=l.length?l[0].id:null;return S.store}
+function dayBar(){return '<div class="days">'+DAYS.map(function(n,i){var c=storesOf(i).length;return '<button class="day'+(S.day==i?' on':'')+'" onclick="S.day='+i+';render()">'+n+(c?'<small>('+c+')</small>':'')+'</button>'}).join("")+'</div>'}
+function chipBar(){var l=storesOf(S.day),cur=getStore();if(!l.length)return '<div class="empty">مفيش مخازن في يوم '+DAYS[S.day]+' — ضيفها من تبويب «المخازن»</div>';
+return '<div class="chips">'+l.map(function(x){var n=pend(x.id).length;return '<button class="chip'+(cur==x.id?' on':'')+'" onclick="S.store=\''+x.id+'\';render()">'+esc(x.name)+(n?'<b>'+n+'</b>':'')+'</button>'}).join("")+'</div>'}
+function render(){
+$("tabs").innerHTML=TABS.map(function(t){return '<button class="'+(S.tab==t[0]?'on':'')+'" onclick="S.tab=\''+t[0]+'\';render()">'+t[1]+'</button>'}).join("");
+var v=$("view"),act=document.activeElement&&document.activeElement.id,sv={},ck=[].map.call(document.querySelectorAll(".ck:checked"),function(c){return c.value});
+["num","sn","q","dam","dno","dnote"].forEach(function(i){if($(i))sv[i]=$(i).value});
+$("st").textContent=(READ_ONLY?"عرض فقط • ":"")+(mode=="online"?"● متزامن أونلاين مع كل الأجهزة":mode=="local"?"● يعمل محلياً على هذا الجهاز فقط (إعدادات Firebase ناقصة)":mode.indexOf("err:")==0?"● خطأ: "+mode.slice(4):"جاري التحميل...");
+if(S.tab=="diff")v.innerHTML=viewDiff();else if(S.tab=="search")v.innerHTML=viewSearch();else if(S.tab=="in")v.innerHTML=viewIn();else if(S.tab=="out")v.innerHTML=viewOut();else if(S.tab=="stores")v.innerHTML=viewStores();else v.innerHTML=viewRep();
+for(var k in sv)if($(k))$(k).value=sv[k];
+[].forEach.call(document.querySelectorAll(".ck"),function(c){if(ck.indexOf(c.value)>-1)c.checked=true});
+if(S.tab=="search")doSearch();
+var f=$(act)||$("num");if(f&&f.focus)f.focus();
+}
+function viewIn(){var h='<h2>إدخال أرقام المردودات</h2>'+dayBar()+chipBar(),cur=getStore();
+if(cur){h+='<div class="row"><input id="num" placeholder="رقم المردود" onkeydown="if(event.key==\'Enter\')addRet()"><button class="btn" onclick="addRet()">إضافة</button></div><div class="list">';
+var l=pend(cur);h+=l.length?l.map(function(r){return '<div class="item"><span class="no">'+esc(r.no)+'</span><span class="meta">'+r.added+'</span><button class="x" title="حذف" onclick="delRet(\''+r.id+'\')">×</button></div>'}).join(""):'<div class="empty">مفيش مردودات منتظرة للمخزن ده</div>';h+='</div>'}
+return h}
+function addRet(){var i=$("num"),v=i.value.trim();if(!v||!S.store)return;
+if(D.returns.some(function(r){return r.storeId==S.store&&r.no==v&&!r.done})&&!confirm("الرقم ده مسجل قبل كده للمخزن، تضيفه تاني؟"))return;
+put("returns",{id:uid(),ts:Date.now(),storeId:S.store,sn:(D.stores.find(function(x){return x.id==S.store})||{}).name||"",no:v,added:new Date().toLocaleDateString("ar-EG"),done:false});render();toast("تمت الإضافة")}
+function delRet(id){rm("returns",id);render()}
+function viewOut(){var h='<h2>استلام المردودات</h2>'+dayBar()+chipBar(),cur=getStore();
+if(cur){var l=pend(cur);h+='<div class="list">';
+h+=l.length?l.map(function(r){return '<label class="item"><input type="checkbox" class="ck" value="'+r.id+'"><span class="no">'+esc(r.no)+'</span><span class="meta">أُضيف '+r.added+'</span></label>'}).join("")+'</div><div class="row" style="margin-top:14px"><button class="btn" onclick="recv()">تأكيد استلام المحدد</button><button class="btn ghost" onclick="document.querySelectorAll(\'.ck\').forEach(function(c){c.checked=true})">تحديد الكل</button></div>':'<div class="empty">كل مردودات المخزن ده اتسلمت ✓</div></div>';
+var dn=D.returns.filter(function(r){return r.storeId==cur&&r.done});
+if(dn.length)h+='<h2 style="margin-top:26px">تم استلامه</h2><div class="list">'+dn.map(function(r){return '<div class="item done"><span class="no">'+esc(r.no)+'</span><span class="meta">استُلم '+r.at+'</span><button class="x" style="color:var(--mut);font-size:13px;font-family:Cairo" onclick="undo(\''+r.id+'\')">تراجع</button></div>'}).join("")+'</div>'}
+return h}
+function recv(){var c=document.querySelectorAll(".ck:checked");if(!c.length){toast("اختار مردود واحد على الأقل");return}
+var ids=[].map.call(c,function(x){return x.value});D.returns.forEach(function(r){if(ids.indexOf(r.id)>-1){r.done=true;r.at=new Date().toLocaleDateString("ar-EG");put("returns",r)}});render();toast("تم تسجيل الاستلام")}
+function undo(id){D.returns.forEach(function(r){if(r.id==id){r.done=false;r.at="";put("returns",r)}});render()}
+function toggle(id){D.returns.forEach(function(r){if(r.id==id){r.done=!r.done;r.at=r.done?new Date().toLocaleDateString("ar-EG"):"";put("returns",r)}});render()}
+
+function fmt(n){return Number(n).toLocaleString("en-US",{maximumFractionDigits:2})}
+function sname(x){var s=D.stores.find(function(a){return a.id==x.storeId});return s?s.name:(x.sn||"—")}
+function stOpts(sel,all){var l=D.stores.filter(function(x){return all?(x.diff||D.diffs.some(function(d){return d.storeId==x.id})):(x.diff||x.id==sel)}).slice().sort(function(a,b){return a.name.localeCompare(b.name,"ar")});return (all?'<option value="all"'+(sel=="all"?' selected':'')+'>كل المخازن</option>':'<option value="">اختر المخزن</option>')+l.map(function(x){return '<option value="'+x.id+'"'+(sel==x.id?' selected':'')+'>'+esc(x.name)+'</option>'}).join("")}
+function viewDiff(){var today=new Date().toISOString().slice(0,10);
+S.dm=S.dm||today.slice(0,7);S.ds=S.ds||"all";S.dk=S.dk||"minus";S.dfs=S.dfs||"";S.dd=S.dd||today;
+var h=READ_ONLY?'':'<h2>تسجيل فرق طلبية</h2><div class="row"><select id="dfs" onchange="S.dfs=this.value">'+stOpts(S.dfs,false)+'</select><span class="row" style="gap:4px"><button class="day'+(S.dk=="minus"?' on':'')+'" onclick="S.dk=\'minus\';render()">عجز</button><button class="day'+(S.dk=="plus"?' on':'')+'" onclick="S.dk=\'plus\';render()">زيادة</button></span><input id="dam" type="number" min="0" step="any" inputmode="decimal" placeholder="قيمة الفرق" style="width:130px" onkeydown="if(event.key==\'Enter\')addDiff()"><input id="dno" placeholder="رقم الطلبية (اختياري)" style="width:170px"><input id="dd" type="date" value="'+S.dd+'" onchange="S.dd=this.value"><input id="dnote" placeholder="ملاحظة (اختياري)" style="flex:1;min-width:140px"><button class="btn" onclick="addDiff()">تسجيل</button></div>';
+h+=''+(READ_ONLY||D.stores.some(function(x){return x.diff})?'':'<p class="hint">مفيش مخازن معلّمة للفروقات — علّم المخازن اللي ليها فروقات من تبويب «المخازن» عشان تظهر هنا. <button class="btn ghost" style="padding:4px 12px" onclick="S.tab=\'stores\';render()">فتح المخازن</button></p>')+'<h2 style="margin-top:28px">إجمالي الفروقات</h2><div class="row"><select onchange="S.ds=this.value;render()">'+stOpts(S.ds,true)+'</select><input type="month" value="'+S.dm+'" onchange="if(this.value){S.dm=this.value;render()}"></div>';
+var l=D.diffs.filter(function(x){return (S.ds=="all"||x.storeId==S.ds)&&(x.date||"").slice(0,7)==S.dm}).sort(function(a,b){return a.date<b.date?1:a.date>b.date?-1:b.ts-a.ts});
+var p=0,m=0,g={};l.forEach(function(x){var o=g[x.storeId]=g[x.storeId]||{n:sname(x),p:0,m:0};if(x.kind=="plus"){p+=x.amount;o.p+=x.amount}else{m+=x.amount;o.m+=x.amount}});
+var net=p-m;
+h+='<div class="tot" style="margin-top:14px"><div><b style="color:var(--ok)">'+fmt(p)+'</b>إجمالي الزيادة</div><div><b style="color:var(--red)">'+fmt(m)+'</b>إجمالي العجز</div><div><b style="color:'+(net<0?'var(--red)':'var(--ok)')+'">'+fmt(Math.abs(net))+'</b>'+(net>0?'صافي زيادة':net<0?'صافي عجز':'متعادل')+'</div></div>';
+if(S.ds=="all"&&l.length){h+='<table><tr><th>المخزن</th><th>زيادة</th><th>عجز</th><th>الصافي</th></tr>'+Object.keys(g).map(function(k){var o=g[k],t=o.p-o.m;return '<tr><td><b>'+esc(o.n)+'</b></td><td>'+fmt(o.p)+'</td><td>'+fmt(o.m)+'</td><td style="color:'+(t<0?'var(--red)':'var(--ok)')+';font-weight:700">'+(t<0?'عجز ':t>0?'زيادة ':'')+fmt(Math.abs(t))+'</td></tr>'}).join("")+'</table>'}
+h+='<div class="list">'+(l.length?l.map(function(x){return '<div class="item'+(x.kind=="minus"?' neg':' done')+'"><span class="no">'+(x.kind=="minus"?'عجز ':'زيادة ')+fmt(x.amount)+'</span><span class="meta">'+esc(sname(x))+(x.order?' • طلبية '+esc(x.order):'')+' • '+x.date+(x.note?' • '+esc(x.note):'')+'</span>'+(READ_ONLY?'':'<button class="x" title="حذف" onclick="delDiff(\''+x.id+'\')">×</button>')+'</div>'}).join(""):'<div class="empty">مفيش فروقات مسجلة في الشهر ده</div>')+'</div>';
+return h}
+function addDiff(){var st=$("dfs").value,a=parseFloat($("dam").value),today=new Date().toISOString().slice(0,10);
+if(!st){toast("اختار المخزن");return}if(!(a>0)){toast("اكتب قيمة الفرق");return}
+var s=D.stores.find(function(x){return x.id==st}),d=$("dd").value||today;
+put("diffs",{id:uid(),ts:Date.now(),storeId:st,sn:s?s.name:"",kind:S.dk,amount:a,order:$("dno").value.trim(),note:$("dnote").value.trim(),date:d});
+$("dam").value="";$("dno").value="";$("dnote").value="";S.dm=d.slice(0,7);render();toast("تم تسجيل الفرق")}
+function delDiff(id){if(confirm("حذف الفرق ده؟")){rm("diffs",id);render()}}
+function viewSearch(){return '<h2>بحث</h2><input id="q" style="width:100%" placeholder="ابحث باسم المخزن أو رقم المردود" oninput="S.q=this.value;doSearch()"><div class="list" id="sres"></div>'}
+function doSearch(){var i=$("q"),out=$("sres");if(!i||!out)return;var q=i.value.trim().toLowerCase();
+if(!q){out.innerHTML='<div class="empty">اكتب جزء من اسم المخزن أو رقم المردود</div>';return}
+var l=D.returns.map(function(r){var s=D.stores.find(function(x){return x.id==r.storeId});return{r:r,n:s?s.name:(r.sn||"—"),d:s?DAYS[s.day]:"—"}}).filter(function(o){return String(o.r.no).toLowerCase().indexOf(q)>-1||o.n.toLowerCase().indexOf(q)>-1});
+out.innerHTML=l.length?l.slice(0,100).map(function(o){var r=o.r;return '<div class="item'+(r.done?' done':'')+'"><span class="no">'+esc(r.no)+'</span><span class="meta">'+esc(o.n)+' • '+o.d+' • '+(r.done?'استُلم '+r.at:'منتظر')+'</span>'+(READ_ONLY?'':'<button class="btn ghost" style="padding:6px 12px" onclick="toggle(\''+r.id+'\')">'+(r.done?'تراجع':'تأكيد الاستلام')+'</button>')+'</div>'}).join(""):'<div class="empty">مفيش نتائج</div>'}
+function viewStores(){var h='<h2>إدارة المخازن</h2><div class="row noprint"><input id="sn" placeholder="اسم المخزن" onkeydown="if(event.key==\'Enter\')addStore()"><select id="sd">'+DAYS.map(function(n,i){return '<option value="'+i+'"'+(i==S.day?' selected':'')+'>'+n+'</option>'}).join("")+'</select><label style="font-size:14px;cursor:pointer;white-space:nowrap"><input type="checkbox" id="sdf"> ضمن الفروقات</label><button class="btn" onclick="addStore()">إضافة مخزن</button></div>';
+if(!D.stores.length)return h+'<div class="list"><div class="empty">لسه مفيش مخازن — ابدأ بإضافة أول مخزن</div></div>';
+DAYS.forEach(function(n,i){var l=storesOf(i);if(!l.length)return;h+='<h2 style="margin-top:22px">'+n+'</h2><div class="grid">'+l.map(function(x){return '<div class="st"><b>'+esc(x.name)+'</b><span class="row"><label title="يظهر في فروقات المخازن" style="font-size:12.5px;cursor:pointer;white-space:nowrap"><input type="checkbox"'+(x.diff?' checked':'')+' onchange="setDiff(\''+x.id+'\',this.checked)"> فروقات</label><select onchange="moveStore(\''+x.id+'\',this.value)">'+DAYS.map(function(m,j){return '<option value="'+j+'"'+(j==i?' selected':'')+'>'+m+'</option>'}).join("")+'</select><button class="x" title="حذف" onclick="delStore(\''+x.id+'\')">🗑</button></span></div>'}).join("")+'</div>'});
+return h+'<p class="hint">غيّر يوم أي مخزن من القائمة المنسدلة بجانبه. علّم على «فروقات» للمخازن اللي بتسجل لها فروقات عشان تظهر في قايمة تبويب فروقات المخازن بس.</p>'}
+function addStore(){var n=$("sn").value.trim();if(!n)return;put("stores",{id:uid(),ts:Date.now(),name:n,day:+$("sd").value,diff:$("sdf").checked});render();toast("تمت إضافة المخزن")}
+function setDiff(id,v){D.stores.forEach(function(x){if(x.id==id){x.diff=!!v;put("stores",x)}});toast(v?"المخزن هيظهر في الفروقات":"اتشال من الفروقات")}
+function moveStore(id,d){D.stores.forEach(function(x){if(x.id==id){x.day=+d;put("stores",x)}});render();toast("تم تغيير اليوم")}
+function delStore(id){var n=pend(id).length;if(!confirm(n?"المخزن عليه "+n+" مردود لسه متسلمش، هيتحذفوا معاه. متأكد؟":"حذف المخزن؟"))return;
+pend(id).forEach(function(r){rm("returns",r.id)});rm("stores",id);render()}
+function repRows(){var o=[];DAYS.forEach(function(n,i){storesOf(i).forEach(function(s){pend(s.id).forEach(function(r){o.push([n,s.name,r.no,r.added])})})});return o}
+function viewRep(){var rows=repRows(),td=new Date().toLocaleDateString("ar-EG",{weekday:"long",year:"numeric",month:"long",day:"numeric"});
+var h='<div class="phead"><h1>تقرير المردودات غير المستلمة</h1><div><span>تاريخ التقرير: '+td+'</span><span>إجمالي المردودات المنتظرة: <b>'+rows.length+'</b></span></div></div>';
+h+='<h2 class="noprint">المردودات اللي لسه متسلمتش</h2><div class="tot noprint"><div><b>'+rows.length+'</b>مردود منتظر</div><div><b>'+D.returns.filter(function(r){return r.done}).length+'</b>تم استلامه</div></div><div class="row noprint" style="margin-bottom:16px"><button class="btn" onclick="exportXls()">تصدير Excel</button><button class="btn ghost" onclick="window.print()">طباعة</button>'+(READ_ONLY?'':'<button class="btn ghost" onclick="backup()">نسخة احتياطية</button><button class="btn ghost" onclick="$(\'rf\').click()">استرجاع نسخة</button><input type="file" id="rf" accept=".json" hidden onchange="restore(this)">')+'</div>';
+if(!rows.length)return h+'<div class="empty">مفيش مردودات معلقة 🎉</div>';
+var cd="",n=0;h+='<table class="rt">';rows.forEach(function(r){if(r[0]!=cd){cd=r[0];h+='<tr class="dayrow"><td colspan="5" class="dh">'+cd+'</td></tr><tr class="th"><th style="width:44px">م</th><th>المخزن</th><th>رقم المردود</th><th>تاريخ الإدخال</th><th style="width:90px">تم التسليم</th></tr>'}
+n++;h+='<tr><td>'+n+'</td><td><b>'+esc(r[1])+'</b></td><td>'+esc(r[2])+'</td><td>'+r[3]+'</td><td class="bx"><i></i></td></tr>'});
+return h+'</table><div class="pfoot">مردودات المخازن</div>'}
+function dl(name,data,type){if(window.claude&&claude.use){claude.use("downloads").then(function(d){if(d)return d.save({filename:name,data:data}).catch(function(){});old(name,data,type)}).catch(function(){old(name,data,type)});return}old(name,data,type)}
+function old(name,data,type){var a=document.createElement("a");a.href=URL.createObjectURL(new Blob([data],{type:type}));a.download=name;document.body.appendChild(a);a.click();a.remove()}
+function exportXls(){var rows=repRows();if(!rows.length){toast("مفيش حاجة تتصدر");return}
+var t='<html dir="rtl"><head><meta charset="utf-8"></head><body><table border="1" style="border-collapse:collapse;font-family:Arial"><tr style="background:#0f6b5c;color:#fff"><th>اليوم</th><th>المخزن</th><th>رقم المردود</th><th>تاريخ الإدخال</th></tr>';
+rows.forEach(function(r){t+='<tr>'+r.map(function(c){return '<td>'+esc(c)+'</td>'}).join("")+'</tr>'});
+dl("مردودات-لم-تستلم-"+new Date().toISOString().slice(0,10)+".xls",t+'</table></body></html>',"application/vnd.ms-excel")}
+function backup(){dl("backup-mardodat.json",JSON.stringify(D),"application/json")}
+function restore(i){var f=i.files[0];if(!f)return;var r=new FileReader();r.onload=function(){try{var d=JSON.parse(r.result);if(d.stores&&d.returns){var n=0;d.stores.forEach(function(x){x.ts=x.ts||Date.now()+n++;put("stores",x)});d.returns.forEach(function(x){x.ts=x.ts||Date.now()+n++;put("returns",x)});(d.diffs||[]).forEach(function(x){x.ts=x.ts||Date.now()+n++;put("diffs",x)});render();toast("تم الاسترجاع")}}catch(e){toast("ملف غير صالح")}};r.readAsText(f)}
+render();init();
+</script>
+</body>
+</html>

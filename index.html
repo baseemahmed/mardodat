@@ -71,14 +71,16 @@ th{background:var(--bg);font-size:13px;color:var(--mut)}
 <nav id="tabs"></nav>
 <main><div class="panel" id="view"></div></main>
 <div id="toast"></div>
+<script src="config.js"></script>
 <script>
 var DAYS=["السبت","الأحد","الاثنين","الثلاثاء","الأربعاء","الخميس","الجمعة"];
 var KEY="mardodat_v1",D={stores:[],returns:[],diffs:[]},DB=null,mode="loading";
 function lsave(){if(!DB){try{localStorage.setItem(KEY,JSON.stringify(D))}catch(e){}}}
 function fail(e){toast("تعذر الحفظ، تأكد من الاتصال")}
-function put(c,o){var a=D[c],i=a.findIndex(function(x){return x.id==o.id});if(i<0)a.push(o);else a[i]=o;if(DB)DB.collection(c).doc(o.id).set(o).catch(fail);lsave()}
-function rm(c,id){D[c]=D[c].filter(function(x){return x.id!=id});if(DB)DB.collection(c).doc(id).delete().catch(fail);lsave()}
-var FIREBASE_CONFIG={apiKey:"AIzaSyCkh7wibNL0lLsQsxVFBOPR3TChqNVH2No",authDomain:"reuturns.firebaseapp.com",projectId:"reuturns",storageBucket:"reuturns.firebasestorage.app",messagingSenderId:"503920619403",appId:"1:503920619403:web:c00a844ccee89efb9cc98e"};
+function put(c,o){if(READ_ONLY)return;var a=D[c],i=a.findIndex(function(x){return x.id==o.id});if(i<0)a.push(o);else a[i]=o;if(DB)DB.collection(c).doc(o.id).set(o).catch(fail);lsave()}
+function rm(c,id){if(READ_ONLY)return;D[c]=D[c].filter(function(x){return x.id!=id});if(DB)DB.collection(c).doc(id).delete().catch(fail);lsave()}
+var FIREBASE_CONFIG=window.FIREBASE_CONFIG||{};
+var READ_ONLY=false;
 function init(){
 if(!window.firebase){mode="err:تعذر تحميل مكتبة Firebase (تأكد من الإنترنت)";render();return}
 if(!FIREBASE_CONFIG.projectId){mode="local";try{var s=localStorage.getItem(KEY);if(s)D=JSON.parse(s);D.diffs=D.diffs||[]}catch(e){}render();return}
@@ -94,6 +96,7 @@ function toast(m){var t=document.getElementById("toast");t.textContent=m;t.class
 var today=(new Date().getDay()+1)%7;
 var S={tab:"in",day:today,store:null};
 var TABS=[["in","إدخال المردودات"],["out","استلام المردودات"],["stores","المخازن"],["diff","فروقات المخازن"],["search","بحث"],["rep","التقرير"]];
+if(READ_ONLY){TABS=TABS.filter(function(t){return ["rep","search","diff"].indexOf(t[0])>-1});S.tab="rep"}
 function $(id){return document.getElementById(id)}
 function storesOf(d){return D.stores.filter(function(x){return x.day==d})}
 function pend(id){return D.returns.filter(function(r){return r.storeId==id&&!r.done})}
@@ -105,7 +108,7 @@ function render(){
 $("tabs").innerHTML=TABS.map(function(t){return '<button class="'+(S.tab==t[0]?'on':'')+'" onclick="S.tab=\''+t[0]+'\';render()">'+t[1]+'</button>'}).join("");
 var v=$("view"),act=document.activeElement&&document.activeElement.id,sv={},ck=[].map.call(document.querySelectorAll(".ck:checked"),function(c){return c.value});
 ["num","sn","q","dam","dno","dnote"].forEach(function(i){if($(i))sv[i]=$(i).value});
-$("st").textContent=mode=="online"?"● متزامن أونلاين مع كل الأجهزة":mode=="local"?"● يعمل محلياً على هذا الجهاز فقط (إعدادات Firebase ناقصة)":mode.indexOf("err:")==0?"● خطأ: "+mode.slice(4):"جاري التحميل...";
+$("st").textContent=(READ_ONLY?"عرض فقط • ":"")+(mode=="online"?"● متزامن أونلاين مع كل الأجهزة":mode=="local"?"● يعمل محلياً على هذا الجهاز فقط (إعدادات Firebase ناقصة)":mode.indexOf("err:")==0?"● خطأ: "+mode.slice(4):"جاري التحميل...");
 if(S.tab=="diff")v.innerHTML=viewDiff();else if(S.tab=="search")v.innerHTML=viewSearch();else if(S.tab=="in")v.innerHTML=viewIn();else if(S.tab=="out")v.innerHTML=viewOut();else if(S.tab=="stores")v.innerHTML=viewStores();else v.innerHTML=viewRep();
 for(var k in sv)if($(k))$(k).value=sv[k];
 [].forEach.call(document.querySelectorAll(".ck"),function(c){if(ck.indexOf(c.value)>-1)c.checked=true});
@@ -136,14 +139,14 @@ function sname(x){var s=D.stores.find(function(a){return a.id==x.storeId});retur
 function stOpts(sel,all){var l=D.stores.filter(function(x){return all?(x.diff||D.diffs.some(function(d){return d.storeId==x.id})):(x.diff||x.id==sel)}).slice().sort(function(a,b){return a.name.localeCompare(b.name,"ar")});return (all?'<option value="all"'+(sel=="all"?' selected':'')+'>كل المخازن</option>':'<option value="">اختر المخزن</option>')+l.map(function(x){return '<option value="'+x.id+'"'+(sel==x.id?' selected':'')+'>'+esc(x.name)+'</option>'}).join("")}
 function viewDiff(){var today=new Date().toISOString().slice(0,10);
 S.dm=S.dm||today.slice(0,7);S.ds=S.ds||"all";S.dk=S.dk||"minus";S.dfs=S.dfs||"";S.dd=S.dd||today;
-var h='<h2>تسجيل فرق طلبية</h2><div class="row"><select id="dfs" onchange="S.dfs=this.value">'+stOpts(S.dfs,false)+'</select><span class="row" style="gap:4px"><button class="day'+(S.dk=="minus"?' on':'')+'" onclick="S.dk=\'minus\';render()">عجز</button><button class="day'+(S.dk=="plus"?' on':'')+'" onclick="S.dk=\'plus\';render()">زيادة</button></span><input id="dam" type="number" min="0" step="any" inputmode="decimal" placeholder="قيمة الفرق" style="width:130px" onkeydown="if(event.key==\'Enter\')addDiff()"><input id="dno" placeholder="رقم الطلبية (اختياري)" style="width:170px"><input id="dd" type="date" value="'+S.dd+'" onchange="S.dd=this.value"><input id="dnote" placeholder="ملاحظة (اختياري)" style="flex:1;min-width:140px"><button class="btn" onclick="addDiff()">تسجيل</button></div>';
-h+=''+(D.stores.some(function(x){return x.diff})?'':'<p class="hint">مفيش مخازن معلّمة للفروقات — علّم المخازن اللي ليها فروقات من تبويب «المخازن» عشان تظهر هنا. <button class="btn ghost" style="padding:4px 12px" onclick="S.tab=\'stores\';render()">فتح المخازن</button></p>')+'<h2 style="margin-top:28px">إجمالي الفروقات</h2><div class="row"><select onchange="S.ds=this.value;render()">'+stOpts(S.ds,true)+'</select><input type="month" value="'+S.dm+'" onchange="if(this.value){S.dm=this.value;render()}"></div>';
+var h=READ_ONLY?'':'<h2>تسجيل فرق طلبية</h2><div class="row"><select id="dfs" onchange="S.dfs=this.value">'+stOpts(S.dfs,false)+'</select><span class="row" style="gap:4px"><button class="day'+(S.dk=="minus"?' on':'')+'" onclick="S.dk=\'minus\';render()">عجز</button><button class="day'+(S.dk=="plus"?' on':'')+'" onclick="S.dk=\'plus\';render()">زيادة</button></span><input id="dam" type="number" min="0" step="any" inputmode="decimal" placeholder="قيمة الفرق" style="width:130px" onkeydown="if(event.key==\'Enter\')addDiff()"><input id="dno" placeholder="رقم الطلبية (اختياري)" style="width:170px"><input id="dd" type="date" value="'+S.dd+'" onchange="S.dd=this.value"><input id="dnote" placeholder="ملاحظة (اختياري)" style="flex:1;min-width:140px"><button class="btn" onclick="addDiff()">تسجيل</button></div>';
+h+=''+(READ_ONLY||D.stores.some(function(x){return x.diff})?'':'<p class="hint">مفيش مخازن معلّمة للفروقات — علّم المخازن اللي ليها فروقات من تبويب «المخازن» عشان تظهر هنا. <button class="btn ghost" style="padding:4px 12px" onclick="S.tab=\'stores\';render()">فتح المخازن</button></p>')+'<h2 style="margin-top:28px">إجمالي الفروقات</h2><div class="row"><select onchange="S.ds=this.value;render()">'+stOpts(S.ds,true)+'</select><input type="month" value="'+S.dm+'" onchange="if(this.value){S.dm=this.value;render()}"></div>';
 var l=D.diffs.filter(function(x){return (S.ds=="all"||x.storeId==S.ds)&&(x.date||"").slice(0,7)==S.dm}).sort(function(a,b){return a.date<b.date?1:a.date>b.date?-1:b.ts-a.ts});
 var p=0,m=0,g={};l.forEach(function(x){var o=g[x.storeId]=g[x.storeId]||{n:sname(x),p:0,m:0};if(x.kind=="plus"){p+=x.amount;o.p+=x.amount}else{m+=x.amount;o.m+=x.amount}});
 var net=p-m;
 h+='<div class="tot" style="margin-top:14px"><div><b style="color:var(--ok)">'+fmt(p)+'</b>إجمالي الزيادة</div><div><b style="color:var(--red)">'+fmt(m)+'</b>إجمالي العجز</div><div><b style="color:'+(net<0?'var(--red)':'var(--ok)')+'">'+fmt(Math.abs(net))+'</b>'+(net>0?'صافي زيادة':net<0?'صافي عجز':'متعادل')+'</div></div>';
 if(S.ds=="all"&&l.length){h+='<table><tr><th>المخزن</th><th>زيادة</th><th>عجز</th><th>الصافي</th></tr>'+Object.keys(g).map(function(k){var o=g[k],t=o.p-o.m;return '<tr><td><b>'+esc(o.n)+'</b></td><td>'+fmt(o.p)+'</td><td>'+fmt(o.m)+'</td><td style="color:'+(t<0?'var(--red)':'var(--ok)')+';font-weight:700">'+(t<0?'عجز ':t>0?'زيادة ':'')+fmt(Math.abs(t))+'</td></tr>'}).join("")+'</table>'}
-h+='<div class="list">'+(l.length?l.map(function(x){return '<div class="item'+(x.kind=="minus"?' neg':' done')+'"><span class="no">'+(x.kind=="minus"?'عجز ':'زيادة ')+fmt(x.amount)+'</span><span class="meta">'+esc(sname(x))+(x.order?' • طلبية '+esc(x.order):'')+' • '+x.date+(x.note?' • '+esc(x.note):'')+'</span><button class="x" title="حذف" onclick="delDiff(\''+x.id+'\')">×</button></div>'}).join(""):'<div class="empty">مفيش فروقات مسجلة في الشهر ده</div>')+'</div>';
+h+='<div class="list">'+(l.length?l.map(function(x){return '<div class="item'+(x.kind=="minus"?' neg':' done')+'"><span class="no">'+(x.kind=="minus"?'عجز ':'زيادة ')+fmt(x.amount)+'</span><span class="meta">'+esc(sname(x))+(x.order?' • طلبية '+esc(x.order):'')+' • '+x.date+(x.note?' • '+esc(x.note):'')+'</span>'+(READ_ONLY?'':'<button class="x" title="حذف" onclick="delDiff(\''+x.id+'\')">×</button>')+'</div>'}).join(""):'<div class="empty">مفيش فروقات مسجلة في الشهر ده</div>')+'</div>';
 return h}
 function addDiff(){var st=$("dfs").value,a=parseFloat($("dam").value),today=new Date().toISOString().slice(0,10);
 if(!st){toast("اختار المخزن");return}if(!(a>0)){toast("اكتب قيمة الفرق");return}
@@ -155,7 +158,7 @@ function viewSearch(){return '<h2>بحث</h2><input id="q" style="width:100%" pl
 function doSearch(){var i=$("q"),out=$("sres");if(!i||!out)return;var q=i.value.trim().toLowerCase();
 if(!q){out.innerHTML='<div class="empty">اكتب جزء من اسم المخزن أو رقم المردود</div>';return}
 var l=D.returns.map(function(r){var s=D.stores.find(function(x){return x.id==r.storeId});return{r:r,n:s?s.name:(r.sn||"—"),d:s?DAYS[s.day]:"—"}}).filter(function(o){return String(o.r.no).toLowerCase().indexOf(q)>-1||o.n.toLowerCase().indexOf(q)>-1});
-out.innerHTML=l.length?l.slice(0,100).map(function(o){var r=o.r;return '<div class="item'+(r.done?' done':'')+'"><span class="no">'+esc(r.no)+'</span><span class="meta">'+esc(o.n)+' • '+o.d+' • '+(r.done?'استُلم '+r.at:'منتظر')+'</span><button class="btn ghost" style="padding:6px 12px" onclick="toggle(\''+r.id+'\')">'+(r.done?'تراجع':'تأكيد الاستلام')+'</button></div>'}).join(""):'<div class="empty">مفيش نتائج</div>'}
+out.innerHTML=l.length?l.slice(0,100).map(function(o){var r=o.r;return '<div class="item'+(r.done?' done':'')+'"><span class="no">'+esc(r.no)+'</span><span class="meta">'+esc(o.n)+' • '+o.d+' • '+(r.done?'استُلم '+r.at:'منتظر')+'</span>'+(READ_ONLY?'':'<button class="btn ghost" style="padding:6px 12px" onclick="toggle(\''+r.id+'\')">'+(r.done?'تراجع':'تأكيد الاستلام')+'</button>')+'</div>'}).join(""):'<div class="empty">مفيش نتائج</div>'}
 function viewStores(){var h='<h2>إدارة المخازن</h2><div class="row noprint"><input id="sn" placeholder="اسم المخزن" onkeydown="if(event.key==\'Enter\')addStore()"><select id="sd">'+DAYS.map(function(n,i){return '<option value="'+i+'"'+(i==S.day?' selected':'')+'>'+n+'</option>'}).join("")+'</select><label style="font-size:14px;cursor:pointer;white-space:nowrap"><input type="checkbox" id="sdf"> ضمن الفروقات</label><button class="btn" onclick="addStore()">إضافة مخزن</button></div>';
 if(!D.stores.length)return h+'<div class="list"><div class="empty">لسه مفيش مخازن — ابدأ بإضافة أول مخزن</div></div>';
 DAYS.forEach(function(n,i){var l=storesOf(i);if(!l.length)return;h+='<h2 style="margin-top:22px">'+n+'</h2><div class="grid">'+l.map(function(x){return '<div class="st"><b>'+esc(x.name)+'</b><span class="row"><label title="يظهر في فروقات المخازن" style="font-size:12.5px;cursor:pointer;white-space:nowrap"><input type="checkbox"'+(x.diff?' checked':'')+' onchange="setDiff(\''+x.id+'\',this.checked)"> فروقات</label><select onchange="moveStore(\''+x.id+'\',this.value)">'+DAYS.map(function(m,j){return '<option value="'+j+'"'+(j==i?' selected':'')+'>'+m+'</option>'}).join("")+'</select><button class="x" title="حذف" onclick="delStore(\''+x.id+'\')">🗑</button></span></div>'}).join("")+'</div>'});
@@ -168,7 +171,7 @@ pend(id).forEach(function(r){rm("returns",r.id)});rm("stores",id);render()}
 function repRows(){var o=[];DAYS.forEach(function(n,i){storesOf(i).forEach(function(s){pend(s.id).forEach(function(r){o.push([n,s.name,r.no,r.added])})})});return o}
 function viewRep(){var rows=repRows(),td=new Date().toLocaleDateString("ar-EG",{weekday:"long",year:"numeric",month:"long",day:"numeric"});
 var h='<div class="phead"><h1>تقرير المردودات غير المستلمة</h1><div><span>تاريخ التقرير: '+td+'</span><span>إجمالي المردودات المنتظرة: <b>'+rows.length+'</b></span></div></div>';
-h+='<h2 class="noprint">المردودات اللي لسه متسلمتش</h2><div class="tot noprint"><div><b>'+rows.length+'</b>مردود منتظر</div><div><b>'+D.returns.filter(function(r){return r.done}).length+'</b>تم استلامه</div></div><div class="row noprint" style="margin-bottom:16px"><button class="btn" onclick="exportXls()">تصدير Excel</button><button class="btn ghost" onclick="window.print()">طباعة</button><button class="btn ghost" onclick="backup()">نسخة احتياطية</button><button class="btn ghost" onclick="$(\'rf\').click()">استرجاع نسخة</button><input type="file" id="rf" accept=".json" hidden onchange="restore(this)"></div>';
+h+='<h2 class="noprint">المردودات اللي لسه متسلمتش</h2><div class="tot noprint"><div><b>'+rows.length+'</b>مردود منتظر</div><div><b>'+D.returns.filter(function(r){return r.done}).length+'</b>تم استلامه</div></div><div class="row noprint" style="margin-bottom:16px"><button class="btn" onclick="exportXls()">تصدير Excel</button><button class="btn ghost" onclick="window.print()">طباعة</button>'+(READ_ONLY?'':'<button class="btn ghost" onclick="backup()">نسخة احتياطية</button><button class="btn ghost" onclick="$(\'rf\').click()">استرجاع نسخة</button><input type="file" id="rf" accept=".json" hidden onchange="restore(this)">')+'</div>';
 if(!rows.length)return h+'<div class="empty">مفيش مردودات معلقة 🎉</div>';
 var cd="",n=0;h+='<table class="rt">';rows.forEach(function(r){if(r[0]!=cd){cd=r[0];h+='<tr class="dayrow"><td colspan="5" class="dh">'+cd+'</td></tr><tr class="th"><th style="width:44px">م</th><th>المخزن</th><th>رقم المردود</th><th>تاريخ الإدخال</th><th style="width:90px">تم التسليم</th></tr>'}
 n++;h+='<tr><td>'+n+'</td><td><b>'+esc(r[1])+'</b></td><td>'+esc(r[2])+'</td><td>'+r[3]+'</td><td class="bx"><i></i></td></tr>'});
