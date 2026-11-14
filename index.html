@@ -96,7 +96,7 @@ function toast(m){var t=document.getElementById("toast");t.textContent=m;t.class
 var today=(new Date().getDay()+1)%7;
 var S={tab:"in",day:today,store:null};
 var TABS=[["in","إدخال المردودات"],["out","استلام المردودات"],["stores","المخازن"],["diff","فروقات المخازن"],["search","بحث"],["rep","التقرير"]];
-if(READ_ONLY){TABS=TABS.filter(function(t){return ["rep","search","diff"].indexOf(t[0])>-1});S.tab="rep"}
+if(READ_ONLY){TABS=TABS.filter(function(t){return ["out","rep"].indexOf(t[0])>-1});S.tab="out"}
 function $(id){return document.getElementById(id)}
 function storesOf(d){return D.stores.filter(function(x){return x.day==d})}
 function pend(id){return D.returns.filter(function(r){return r.storeId==id&&!r.done})}
@@ -123,11 +123,11 @@ function addRet(){var i=$("num"),v=i.value.trim();if(!v||!S.store)return;
 if(D.returns.some(function(r){return r.storeId==S.store&&r.no==v&&!r.done})&&!confirm("الرقم ده مسجل قبل كده للمخزن، تضيفه تاني؟"))return;
 put("returns",{id:uid(),ts:Date.now(),storeId:S.store,sn:(D.stores.find(function(x){return x.id==S.store})||{}).name||"",no:v,added:new Date().toLocaleDateString("ar-EG"),done:false});render();toast("تمت الإضافة")}
 function delRet(id){rm("returns",id);render()}
-function viewOut(){var h='<h2>استلام المردودات</h2>'+dayBar()+chipBar(),cur=getStore();
+function viewOut(){var h='<h2>'+(READ_ONLY?'المردودات المطلوب استلامها':'استلام المردودات')+'</h2>'+dayBar()+chipBar(),cur=getStore();
 if(cur){var l=pend(cur);h+='<div class="list">';
-h+=l.length?l.map(function(r){return '<label class="item"><input type="checkbox" class="ck" value="'+r.id+'"><span class="no">'+esc(r.no)+'</span><span class="meta">أُضيف '+r.added+'</span></label>'}).join("")+'</div><div class="row" style="margin-top:14px"><button class="btn" onclick="recv()">تأكيد استلام المحدد</button><button class="btn ghost" onclick="document.querySelectorAll(\'.ck\').forEach(function(c){c.checked=true})">تحديد الكل</button></div>':'<div class="empty">كل مردودات المخزن ده اتسلمت ✓</div></div>';
+h+=l.length?l.map(function(r){return '<'+(READ_ONLY?'div':'label')+' class="item">'+(READ_ONLY?'':'<input type="checkbox" class="ck" value="'+r.id+'">')+'<span class="no">'+esc(r.no)+'</span><span class="meta">أُضيف '+r.added+'</span></'+(READ_ONLY?'div':'label')+'>'}).join("")+'</div>'+(READ_ONLY?'':'<div class="row" style="margin-top:14px"><button class="btn" onclick="recv()">تأكيد استلام المحدد</button><button class="btn ghost" onclick="document.querySelectorAll(\'.ck\').forEach(function(c){c.checked=true})">تحديد الكل</button></div>'):'<div class="empty">كل مردودات المخزن ده اتسلمت ✓</div></div>';
 var dn=D.returns.filter(function(r){return r.storeId==cur&&r.done});
-if(dn.length)h+='<h2 style="margin-top:26px">تم استلامه</h2><div class="list">'+dn.map(function(r){return '<div class="item done"><span class="no">'+esc(r.no)+'</span><span class="meta">استُلم '+r.at+'</span><button class="x" style="color:var(--mut);font-size:13px;font-family:Cairo" onclick="undo(\''+r.id+'\')">تراجع</button></div>'}).join("")+'</div>'}
+if(dn.length&&!READ_ONLY)h+='<h2 style="margin-top:26px">تم استلامه</h2><div class="list">'+dn.map(function(r){return '<div class="item done"><span class="no">'+esc(r.no)+'</span><span class="meta">استُلم '+r.at+'</span><button class="x" style="color:var(--mut);font-size:13px;font-family:Cairo" onclick="undo(\''+r.id+'\')">تراجع</button></div>'}).join("")+'</div>'}
 return h}
 function recv(){var c=document.querySelectorAll(".ck:checked");if(!c.length){toast("اختار مردود واحد على الأقل");return}
 var ids=[].map.call(c,function(x){return x.value});D.returns.forEach(function(r){if(ids.indexOf(r.id)>-1){r.done=true;r.at=new Date().toLocaleDateString("ar-EG");put("returns",r)}});render();toast("تم تسجيل الاستلام")}
